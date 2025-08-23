@@ -1,16 +1,37 @@
-// routes/auth.js
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
+from flask import Blueprint, request, jsonify, session
+from models import db, User
+import os
 
-router.post('/register', async (req, res) => {
-  const { name, phone } = req.body;
-  if (!name || !phone) return res.status(400).json({ msg: 'Invalid data' });
-  let user = await User.findOne({ phone });
-  if (user) return res.status(400).json({ msg: 'Already registered' });
-  user = new User({ name, phone });
-  await user.save();
-  res.json(user);
-});
+auth_routes = Blueprint('auth', __name__)
 
-module.exports = router;
+@auth_routes.route('/signup', methods=['POST'])
+def signup():
+    data = request.form
+    file = request.files.get('profile_pic')
+    
+    filename = None
+    if file:
+        filename = f"profile_{data['email']}.jpg"
+        file.save(os.path.join('uploads', filename))
+
+    user = User(
+        name=data['name'],
+        email=data['email'],
+        password=data['password'],  # plaintext for admin
+        profile_pic=filename
+    )
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({"message": "User created!"})
+
+@auth_routes.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    user = User.query.filter_by(email=data['email'], password=data['password']).first()
+    if user:
+        return jsonify({
+            "message": "Login successful",
+            "user_id": user.id,
+            "is_admin": user.is_admin
+        })
+    return jsonify({"error": "Invalid credentials"}), 401
