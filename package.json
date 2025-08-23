@@ -1,0 +1,9 @@
+{
+  "id": "uuid",
+  "sender_id": "user_id",
+  "receiver_id": "user_id",
+  "text": "string",
+  "media_url": "string (image/video/audio)",
+  "media_type": "enum: ['text', 'image', 'video', 'audio']",
+  "timestamp": "datetime"
+}
