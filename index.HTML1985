@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Community Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Animated Welcome Text -->
+  <h1 class="welcome">We'll come to community chat</h1>
+
+  <!-- Room Join Section -->
+  <div class="room-join">
+    <input type="text" id="roomInput" placeholder="Enter friend name or room ID" />
+    <button id="joinRoomBtn">Join Chat Room</button>
+  </div>
+
+  <!-- Chat Display Area -->
+  <div class="chat-box">
+    <!-- Messages will appear here -->
+  </div>
+
+  <!-- Message Input -->
+  <div class="message-input">
+    <input type="text" id="messageInput" placeholder="Write a message..." />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <!-- Online User Count -->
+  <div class="online-info">
+    Online Users: <span id="userCount">0</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
