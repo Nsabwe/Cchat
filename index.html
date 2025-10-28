@@ -2,196 +2,141 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Topher Liphava</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cchat</title>
   <style>
-    body  <!-- Floating Particle Canvas --><!-- Animated Sky with Clouds -->
-<div class="sky">
-  <div class="cloud"></div>
-  <div class="cloud"></div>
-  <div class="cloud"></div>
-</div>
-  <canvas id="particle-canvas"></canvas>
-
-  <!-- Liquid Background Effect -->
-  <div class="liquid-background"></div>
-
-  <!-- Welcome Banner -->
-  <div class="welcome-banner">
-    <h1 id="snake-text">Welcome to Chris Website</h1>
-  </div>
-
-    header {
-      padding: 20px;
-      text-align: center;
-      background-color: darkred;
-      font-size: 24px;
-    }
-
-    #login-screen {
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background: url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1950&q=80') no-repeat center center fixed;
+      background-size: cover;
       display: flex;
       flex-direction: column;
+      justify-content: center;
       align-items: center;
-      margin-top: 100px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
     }
 
-    #main-content {
-      display: none;
-      padding: 20px;
+    h1 {
+      font-size: 64px;
+      background: linear-gradient(90deg, #ffd700, #ffcc00, #fff8dc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shine 3s infinite linear;
+      margin-bottom: 40px;
     }
 
-    input, textarea {
-      padding: 10px;
-      margin: 10px;
-      border-radius: 5px;
+    @keyframes shine {
+      0% { background-position: -500px; }
+      100% { background-position: 500px; }
+    }
+
+    .start-button {
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
       border: none;
-      width: 250px;
-    }
-
-    .button {
-      background-color: black;
+      border-radius: 10px;
+      background: linear-gradient(to right, gold, #f8c000);
       color: white;
-      padding: 10px 20px;
       cursor: pointer;
-      border: none;
-      border-radius: 5px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      transition: transform 0.2s ease-in-out;
     }
 
-    .profile {
-      margin-bottom: 20px;
+    .start-button:hover {
+      transform: scale(1.1);
     }
 
-    .chat-box {
-      background-color: #fff;
-      color: black;
-      padding: 10px;
-      border-radius: 5px;
-      max-height: 200px;
-      overflow-y: auto;
-      margin-bottom: 20px;
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(0,0,0,0.9), rgba(0,0,0,1));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.6s ease;
+      z-index: 9999;
     }
 
-    nav {
-      margin-bottom: 20px;
+    .loading-overlay.active {
+      opacity: 1;
+      visibility: visible;
     }
 
-    nav a {
-      color: white;
-      margin: 0 10px;
-      text-decoration: underline;
+    /* Smaller Spinner */
+    .spinner {
+      width: 60px;               /* smaller size */
+      height: 60px;              /* smaller size */
+      border: 6px solid transparent; /* thinner border */
+      border-top: 6px solid #ff0000;
+      border-right: 6px solid #ff7f00;
+      border-bottom: 6px solid #00ff00;
+      border-left: 6px solid #0000ff;
+      border-radius: 50%;
+      animation: spinAndBreathe 3s linear infinite, hue 4s infinite linear;
+      box-shadow: 0 0 15px rgba(255,255,255,0.4);
     }
 
-    nav a:hover {
-      text-decoration: none;
+    @keyframes spinAndBreathe {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.2); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    @keyframes hue {
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #fff;
+      margin-top: 25px;
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
     }
   </style>
 </head>
 <body>
-  <header>
-    Welcome to NSABWE website
-  </header>
 
-  <div id="login-screen">
-    <h2>Enter Your Info</h2>
-    <input type="text" id="name" placeholder="Your Name" required />
-    <input type="text" id="phone" placeholder="10-digit Phone Number" required />
-    <button class="button" onclick="login()">Enter</button>
-  </div>
+  <h1>Liphava Christo</h1>
+  <button class="start-button" onclick="startLoading()">Start</button>
 
-  <div id="main-content">
-    <nav>
-      <a href="about.html">About</a>
-      <a href="contact.html">Contact</a>
-      <a href="friends.html">Friends</a>
-      <a href="gallery.html">Gallery</a>
-      <a href="messages.html">Messages</a>
-      <a href="projects.html">Projects</a>
-      <a href="blog.html">Blog</a>
-    </nav>
-
-    <div class="profile">
-      <h3>Your Profile</h3>
-      <input type="file" id="profile-pic" accept="image/*" onchange="loadProfilePic(event)" />
-      <br/>
-      <img id="profile-display" src="" alt="Profile Picture" width="100" height="100" style="display:none; border-radius: 50%;" />
-    </div>
-
-    <div class="chat-section">
-      <h3>Chat</h3>
-      <div class="chat-box" id="chat-box"></div>
-      <textarea id="chat-input" placeholder="Type a message..."></textarea>
-      <br/>
-      <button class="button" onclick="sendMessage()">Send</button>
-    </div>
-
-    <div>
-      <h3>Post Picture</h3>
-      <input type="file" accept="image/*" onchange="previewImage(event)">
-      <br/>
-      <img id="image-preview" width="200" style="margin-top:10px;" />
-    </div>
-
-    <div>
-      <h3>Post Video</h3>
-      <input type="file" accept="video/*" onchange="previewVideo(event)">
-      <br/>
-      <video id="video-preview" width="320" height="240" controls style="margin-top:10px;"></video>
-    </div>
-
-    <div>
-      <h3>Voice Message</h3>
-      <input type="file" accept="audio/*" onchange="playAudio(event)">
-      <br/>
-      <audio id="audio-player" controls style="margin-top:10px;"></audio>
-    </div>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading, please wait...</div>
   </div>
 
   <script>
-    function login() {
-      const name = document.getElementById('name').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      if (!name || phone.length !== 10 || isNaN(phone)) {
-        alert("Please enter a valid name and 10-digit phone number.");
-        return;
-      }
+    function startLoading() {
+      const loadingScreen = document.getElementById('loading');
 
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('main-content').style.display = 'block';
-    }
+      // Show the loader
+      loadingScreen.classList.add('active');
 
-    function loadProfilePic(event) {
-      const reader = new FileReader();
-      reader.onload = function () {
-        const output = document.getElementById('profile-display');
-        output.src = reader.result;
-        output.style.display = 'block';
-      };
-      reader.readAsDataURL(event.target.files[0]);
-    }
-
-    function sendMessage() {
-      const chatBox = document.getElementById('chat-box');
-      const message = document.getElementById('chat-input').value;
-      if (message.trim() === '') return;
-      chatBox.innerHTML += `<div><strong>You:</strong> ${message}</div>`;
-      document.getElementById('chat-input').value = '';
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function previewImage(event) {
-      const output = document.getElementById('image-preview');
-      output.src = URL.createObjectURL(event.target.files[0]);
-    }
-
-    function previewVideo(event) {
-      const output = document.getElementById('video-preview');
-      output.src = URL.createObjectURL(event.target.files[0]);
-    }
-
-    function playAudio(event) {
-      const audio = document.getElementById('audio-player');
-      audio.src = URL.createObjectURL(event.target.files[0]);
+      // Stay for 6 seconds, then redirect
+      setTimeout(() => {
+        window.location.href = 'chat.html';
+      }, 6000);
     }
   </script>
+
 </body>
 </html>
