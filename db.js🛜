@@ -1,0 +1,92 @@
+const mongoose = require("mongoose");
+
+// ===== Connect to MongoDB =====
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log("✅ MongoDB connected");
+    return true;
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err);
+    return false;
+  }
+};
+
+// ===== User Schema =====
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  profile: { type: String, default: "" },
+
+  socketId: { type: String, default: "" },
+  online: { type: Boolean, default: false },
+
+  // For push notifications
+  pushSubscription: { type: Object, default: null },
+
+}, { timestamps: true });
+
+const User = mongoose.model("User", UserSchema);
+
+// ===== Public Message Schema =====
+const MessageSchema = new mongoose.Schema({
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  senderName: String,
+  senderProfile: String,
+  content: String,
+
+  history: [
+    {
+      content: String,
+      editedAt: { type: Date, default: Date.now }
+    }
+  ],
+
+  deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+  status: {
+    type: String,
+    enum: ["sent", "delivered", "read"],
+    default: "sent"
+  }
+}, { timestamps: true });
+
+const Message = mongoose.model("Message", MessageSchema);
+
+// ===== Private Message Schema =====
+const PrivateMessageSchema = new mongoose.Schema({
+  room: { type: String, index: true }, // unique room between two users
+
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  senderName: String,
+
+  content: String,
+
+  history: [
+    {
+      content: String,
+      editedAt: { type: Date, default: Date.now }
+    }
+  ],
+
+  deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+  status: {
+    type: String,
+    enum: ["sent", "delivered", "read"],
+    default: "sent"
+  }
+
+}, { timestamps: true });
+
+const PrivateMessage = mongoose.model("PrivateMessage", PrivateMessageSchema);
+
+// ===== Export Models & Connection Function =====
+module.exports = {
+  connectDB,
+  User,
+  Message,
+  PrivateMessage
+};

@@ -1,0 +1,202 @@
+require("dotenv").config();
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const webpush = require("web-push");
+const fs = require("fs");
+
+const { connectDB, User, Message, PrivateMessage } = require("./db");
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+app.use(cors());
+app.use(express.json());
+
+// ===== Cloudinary Setup =====
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ===== Multer (temporary uploads) =====
+const storage = multer.diskStorage({
+  destination: "tmp/",
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+const upload = multer({ storage });
+
+// ===== Web Push Setup =====
+webpush.setVapidDetails(
+  "mailto:you@example.com",
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+async function sendPushNotification(subscription, payload) {
+  if (!subscription) return;
+  try {
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+  } catch (err) {
+    console.error("❌ Push notification error:", err);
+  }
+}
+
+// ===== Routes =====
+
+// Save user + profile pic
+app.post("/user/save", upload.single("profile"), async (req, res) => {
+  let profileUrl = "";
+  if (req.file) {
+    const result = await cloudinary.uploader.upload(req.file.path, { folder: "chat_profiles" });
+    profileUrl = result.secure_url;
+    fs.unlinkSync(req.file.path);
+  }
+
+  const user = new User({ name: req.body.name, profile: profileUrl });
+  await user.save();
+  res.json(user);
+});
+
+// Save push subscription
+app.post("/user/save-subscription", async (req, res) => {
+  const { userId, subscription } = req.body;
+  if (!userId || !subscription) return res.sendStatus(400);
+  await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
+  res.sendStatus(200);
+});
+
+// Get all public messages
+app.get("/messages", async (req, res) => {
+  const messages = await Message.find().sort({ createdAt: 1 });
+  res.json(messages);
+});
+
+// Upload chat file
+app.post("/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.sendStatus(400);
+  const result = await cloudinary.uploader.upload(req.file.path, { folder: "chat_files" });
+  fs.unlinkSync(req.file.path);
+  res.json({ url: result.secure_url });
+});
+
+// ===== Socket.io =====
+io.on("connection", (socket) => {
+  socket.on("join", async (user) => {
+    await User.findByIdAndUpdate(user._id, { socketId: socket.id, online: true });
+    const users = await User.find();
+    io.emit("presence", users);
+  });
+
+  socket.on("sendMessage", async (data) => {
+    const sender = await User.findOne({ socketId: socket.id });
+    if (!sender) return;
+
+    const msg = new Message({
+      senderId: sender._id,
+      senderName: sender.name,
+      senderProfile: sender.profile,
+      content: data.content,
+      status: "sent"
+    });
+    await msg.save();
+    io.emit("newMessage", msg);
+
+    // Mark as read
+    setTimeout(async () => {
+      msg.status = "read";
+      await msg.save();
+      io.emit("updateStatus", { id: msg._id, status: "read" });
+    }, 1000);
+
+    // Push to other users
+    const users = await User.find({ _id: { $ne: sender._id } });
+    users.forEach(u =>
+      sendPushNotification(u.pushSubscription, {
+        title: `New message from ${sender.name}`,
+        body: data.content,
+        url: "https://your-frontend-url.com/chat"
+      })
+    );
+  });
+
+  socket.on("typing", (name) => socket.broadcast.emit("typing", name));
+  socket.on("stopTyping", () => socket.broadcast.emit("stopTyping"));
+
+  socket.on("deleteMessage", async (id, userId) => {
+    const msg = await Message.findById(id);
+    if (!msg) return;
+    msg.deletedFor.push(userId);
+    await msg.save();
+    io.emit("messageDeleted", { id, userId });
+  });
+
+  socket.on("editMessage", async ({ id, newContent }) => {
+    const msg = await Message.findById(id);
+    if (!msg) return;
+    msg.history.push({ content: msg.content, editedAt: new Date() });
+    msg.content = newContent;
+    await msg.save();
+    io.emit("messageEdited", msg);
+  });
+
+  // Private chat
+  socket.on("joinPrivate", async ({ me, other }) => {
+    const room = [me, other].sort().join("_");
+    socket.join(room);
+    const history = await PrivateMessage.find({ room }).sort({ createdAt: 1 });
+    socket.emit("privateHistory", history);
+  });
+
+  socket.on("sendPrivateMessage", async ({ room, content, toUserId }) => {
+    const sender = await User.findOne({ socketId: socket.id });
+    if (!sender) return;
+
+    const dbMsg = new PrivateMessage({
+      room,
+      senderId: sender._id,
+      senderName: sender.name,
+      content,
+      status: "sent"
+    });
+
+    await dbMsg.save();
+    io.to(room).emit("newPrivateMessage", dbMsg);
+
+    setTimeout(async () => {
+      dbMsg.status = "read";
+      await dbMsg.save();
+      io.to(room).emit("updatePrivateStatus", { id: dbMsg._id, status: "read" });
+    }, 1000);
+
+    const receiver = await User.findById(toUserId);
+    if (receiver) {
+      sendPushNotification(receiver.pushSubscription, {
+        title: `New private message from ${sender.name}`,
+        body: content,
+        url: `https://your-frontend-url.com/chat/private/${room}`
+      });
+    }
+  });
+
+  socket.on("disconnect", async () => {
+    await User.findOneAndUpdate({ socketId: socket.id }, { socketId: "", online: false });
+    const users = await User.find();
+    io.emit("presence", users);
+  });
+});
+
+// ===== Start server =====
+const PORT = process.env.PORT || 10000;
+(async () => {
+  const connected = await connectDB();
+  if (connected) console.log("✅ MongoDB connected, server starting...");
+  else console.log("⚠️ Server started without MongoDB");
+
+  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+})();
